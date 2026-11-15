@@ -8,7 +8,7 @@ import argparse
 import sys
 
 from credit_risk.data import clean, ingest, validate
-from credit_risk.export import to_powerbi
+from credit_risk.export import to_app
 from credit_risk.features import build_features
 from credit_risk.models import evaluate, explain, train
 
@@ -20,7 +20,7 @@ STEPS = {
     "train": train.run,
     "evaluate": evaluate.run,
     "explain": explain.run,
-    "export": to_powerbi.run,
+    "export": to_app.run,
 }
 
 
