@@ -25,7 +25,7 @@ Known data issues, each recorded in `docs/cleaning_log.md`:
 - Loans with status "Current" have no outcome yet and are removed from modelling.
 - Many columns are only known after the loan is issued (for example `total_pymnt`, `recoveries`). They are dropped to prevent leakage.
 - Many columns are mostly empty.
-- `int_rate` and `revol_util` are stored as strings with `%`, and `emp_length` is text.
+- The raw table is all text, so numbers such as `int_rate` and `revol_util` need casting (no `%` signs in this file), and `emp_length` is text.
 - `annual_inc` and `dti` contain extreme outliers.
 - Lending Club's criteria changed over time, so older and newer loans behave differently.
 - Defaults are the minority class, roughly 1 in 5 resolved loans (to be confirmed in the data audit).

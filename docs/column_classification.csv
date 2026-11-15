@@ -1,0 +1,152 @@
+column,decision,reason,role,feature_set,in_app_model
+id,keep,"Identifier, not a feature. Kept for the duplicate-ID check.",identifier,,
+member_id,drop_sparse,Empty in every row.,none,,
+loan_amnt,keep,"Loan terms, known at application.",feature,core,yes
+funded_amnt,eval_only,"Set when the loan is funded, after application, and a near-duplicate of loan_amnt. Never a feature. Kept in the outcome table as the loan's exposure for the profit curve.",eval_only,,
+funded_amnt_inv,drop_redundant,"Investor-funded share of the loan, a near-duplicate of loan_amnt and not known at application.",none,,
+term,keep,"Modelling uses 36-month loans only, because most 60-month loans issued 2015 or later are still unresolved. Constant after the filter, so not a feature. Used for the profit calculation.",filter,,
+int_rate,keep,"Lending Club's own risk assessment, so partly copies their model. Excluded from the headline model; added only in the ablation run to measure how much they lift AUC.",feature,lc_assessment,no
+installment,keep,"Loan terms. The monthly payment is calculated from loan_amnt, term and int_rate, so with a fixed term it reveals the interest rate. Excluded from the headline model; added only in the ablation run.",feature,lc_assessment,no
+grade,keep,"Lending Club's own risk assessment, so partly copies their model. Excluded from the headline model; added only in the ablation run to measure how much they lift AUC.",feature,lc_assessment,no
+sub_grade,keep,"Lending Club's own risk assessment, so partly copies their model. Excluded from the headline model; added only in the ablation run to measure how much they lift AUC.",feature,lc_assessment,no
+emp_title,drop_irrelevant,"Free text with about 500,000 distinct values.",none,,
+emp_length,keep,"Borrower profile, known at application. Possible age proxy, so note it in the model card fairness section.",feature,core,yes
+home_ownership,keep,"Borrower profile, known at application.",feature,core,yes
+annual_inc,keep,"Borrower profile, known at application.",feature,core,yes
+verification_status,keep,"Borrower profile, known at application.",feature,core,no
+issue_d,keep,"Split key for the out-of-time split and join key for the FRED unemployment join (with addr_state, use the previous month). Not a model feature: only the issue month may be derived from it, not the year.",split_key,,
+loan_status,keep,"Source of the target is_default, not a feature.",target,,
+pymnt_plan,drop_leakage,Payment plan is set after the loan is issued.,none,,
+url,drop_irrelevant,"Link built from id, no information.",none,,
+desc,drop_sparse,"94% missing free text, written only by some borrowers.",none,,
+purpose,keep,"Loan terms, known at application.",feature,core,yes
+title,drop_irrelevant,Free text that duplicates purpose.,none,,
+zip_code,drop_irrelevant,"Three-digit zip code with high cardinality. addr_state already gives the geography. Potential proxy for protected characteristics, so the week 6 proxy check uses addr_state only.",none,,
+addr_state,keep,"Borrower profile, known at application. Also the join key for the FRED state unemployment join.",feature,core,no
+dti,keep,Credit history at application.,feature,core,yes
+delinq_2yrs,keep,Credit history at application.,feature,core,yes
+earliest_cr_line,keep,"Credit history at application. Possible age proxy through credit history length, so note it in the model card fairness section.",feature,core,yes
+fico_range_low,keep,Credit history at application.,feature,core,yes
+fico_range_high,keep,Credit history at application.,feature,core,yes
+inq_last_6mths,keep,Credit history at application.,feature,core,yes
+mths_since_last_delinq,keep,"Months since an event. Missing mostly means the event never happened, so missingness is informative (handle in cleaning, do not drop).",feature,core,no
+mths_since_last_record,keep,"Months since an event. Missing mostly means the event never happened, so missingness is informative (handle in cleaning, do not drop).",feature,core,no
+open_acc,keep,Credit history at application.,feature,core,no
+pub_rec,keep,Credit history at application.,feature,core,no
+revol_bal,keep,Credit history at application.,feature,core,no
+revol_util,keep,Credit history at application.,feature,core,yes
+total_acc,keep,Credit history at application.,feature,core,no
+initial_list_status,drop_irrelevant,"Lending Club marketplace listing detail, not borrower or loan risk.",none,,
+out_prncp,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+out_prncp_inv,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+total_pymnt,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table to compute realised profit for the profit curve.",eval_only,,
+total_pymnt_inv,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+total_rec_prncp,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table to compute realised loss given default for the profit curve.",eval_only,,
+total_rec_int,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table to compute realised interest income for the profit curve.",eval_only,,
+total_rec_late_fee,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+recoveries,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table to estimate recovery rate (loss given default).",eval_only,,
+collection_recovery_fee,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table so recoveries can be netted of collection costs.",eval_only,,
+last_pymnt_d,eval_only,"Repayment history, only known after the loan is issued. Never a feature. Kept in the outcome table to check how many loans are still unresolved, and for the survival-analysis stretch goal.",eval_only,,
+last_pymnt_amnt,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+next_pymnt_d,drop_leakage,"Repayment history, only known after the loan is issued.",none,,
+last_credit_pull_d,drop_leakage,"Credit pull after issue, only known after the loan is issued.",none,,
+last_fico_range_high,drop_leakage,"Credit pull after issue, only known after the loan is issued.",none,,
+last_fico_range_low,drop_leakage,"Credit pull after issue, only known after the loan is issued.",none,,
+collections_12_mths_ex_med,keep,Credit history at application.,feature,core,no
+mths_since_last_major_derog,keep,"Months since an event. Missing mostly means the event never happened, so missingness is informative (handle in cleaning, do not drop). Column not collected before 2012, so train from 2013 onward.",feature,core,no
+policy_code,drop_irrelevant,Constant: 1 in every row.,none,,
+application_type,keep,"Joint applications are about 0% of loans before 2015 and 0.1% in 2015. Filter to Individual loans, then the column is constant and not a feature. Keeps annual_inc and dti consistent in meaning.",filter,,
+annual_inc_joint,drop_sparse,"Joint applications only (about 5% of loans), over 94% missing.",none,,
+dti_joint,drop_sparse,"Joint applications only (about 5% of loans), over 94% missing.",none,,
+verification_status_joint,drop_sparse,"Joint applications only (about 5% of loans), over 94% missing.",none,,
+acc_now_delinq,keep,Credit history at application.,feature,core,no
+tot_coll_amt,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+tot_cur_bal,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+open_acc_6m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_act_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_il_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_il_24m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+mths_since_rcnt_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+total_bal_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+il_util,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_rv_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_rv_24m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+max_bal_bc,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+all_util,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+total_rev_hi_lim,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+inq_fi,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+total_cu_tl,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+inq_last_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+acc_open_past_24mths,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+avg_cur_bal,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+bc_open_to_buy,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+bc_util,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+chargeoff_within_12_mths,keep,Credit history at application.,feature,core,no
+delinq_amnt,keep,Credit history at application.,feature,core,no
+mo_sin_old_il_acct,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mo_sin_old_rev_tl_op,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mo_sin_rcnt_rev_tl_op,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mo_sin_rcnt_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mort_acc,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mths_since_recent_bc,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mths_since_recent_bc_dlq,keep,"Months since an event. Missing mostly means the event never happened, so missingness is informative (handle in cleaning, do not drop). Column not collected before 2012, so train from 2013 onward.",feature,core,no
+mths_since_recent_inq,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+mths_since_recent_revol_delinq,keep,"Months since an event. Missing mostly means the event never happened, so missingness is informative (handle in cleaning, do not drop). Column not collected before 2012, so train from 2013 onward.",feature,core,no
+num_accts_ever_120_pd,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_actv_bc_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_actv_rev_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_bc_sats,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_bc_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_il_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_op_rev_tl,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_rev_accts,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_rev_tl_bal_gt_0,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_sats,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_tl_120dpd_2m,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_tl_30dpd,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_tl_90g_dpd_24m,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+num_tl_op_past_12m,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+pct_tl_nvr_dlq,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+percent_bc_gt_75,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+pub_rec_bankruptcies,keep,Credit history at application.,feature,core,no
+tax_liens,keep,Credit history at application.,feature,core,no
+tot_hi_cred_lim,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+total_bal_ex_mort,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+total_bc_limit,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+total_il_high_credit_limit,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
+revol_bal_joint,drop_sparse,"Joint applications only (about 5% of loans), over 94% missing.",none,,
+sec_app_fico_range_low,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_fico_range_high,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_earliest_cr_line,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_inq_last_6mths,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_mort_acc,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_open_acc,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_revol_util,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_open_act_il,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_num_rev_accts,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_chargeoff_within_12_mths,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_collections_12_mths_ex_med,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+sec_app_mths_since_last_major_derog,drop_sparse,"Secondary applicant on joint applications only, over 95% missing.",none,,
+hardship_flag,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_type,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_reason,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_status,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+deferral_term,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_amount,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_start_date,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_end_date,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+payment_plan_start_date,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_length,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_dpd,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_loan_status,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+orig_projected_additional_accrued_interest,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_payoff_balance_amount,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+hardship_last_payment_amount,drop_leakage,"Hardship programme, happens after the loan is issued (also over 99% missing).",none,,
+disbursement_method,drop_irrelevant,"DirectPay is 0% of loans until 2015 and 14% in 2018, so it is absent from the training years and drifts afterwards.",none,,
+debt_settlement_flag,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+debt_settlement_flag_date,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+settlement_status,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+settlement_date,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+settlement_amount,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+settlement_percentage,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
+settlement_term,drop_leakage,"Debt settlement happens after default or delinquency, so it reveals the outcome.",none,,
