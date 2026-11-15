@@ -1,0 +1,26 @@
+# Data
+pandas>=2.2.3
+numpy>=2.1
+pyarrow>=17.0
+duckdb>=1.1
+
+# Modelling
+scikit-learn>=1.5
+xgboost>=2.1
+shap>=0.46
+
+# Visualisation
+matplotlib>=3.9
+seaborn>=0.13
+plotly>=5.24
+
+# App
+streamlit>=1.39
+
+# Dev
+jupyter>=1.1
+pytest>=8.3
+
+# Install the local package so `import credit_risk` works everywhere
+# (including on Streamlit Community Cloud).
+-e .

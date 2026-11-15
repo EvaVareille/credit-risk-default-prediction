@@ -218,3 +218,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ============================================================
+# Project-specific
+# ============================================================
+
+# Data: ignore everything under the top-level data/ folder, but keep the
+# folder structure (.gitkeep). Anchored with a leading "/" so it does NOT
+# match src/credit_risk/data/ (code) or app/data/ (committed app data).
+/data/**
+!/data/**/
+!/data/**/.gitkeep
+
+# Trained models: commit the model if it is under ~50 MB (the app needs it).
+# Uncomment only if the final model file is too large for GitHub.
+# /models/*.pkl
+
+# Power BI backups
+*.pbix.bak
