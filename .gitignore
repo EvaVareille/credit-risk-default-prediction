@@ -236,3 +236,6 @@ __marimo__/
 
 # Power BI backups
 *.pbix.bak
+
+# graphify output
+graphify-out/
