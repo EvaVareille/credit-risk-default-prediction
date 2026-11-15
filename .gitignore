@@ -234,8 +234,5 @@ __marimo__/
 # Uncomment only if the final model file is too large for GitHub.
 # /models/*.pkl
 
-# Power BI backups
-*.pbix.bak
-
 # graphify output
 graphify-out/

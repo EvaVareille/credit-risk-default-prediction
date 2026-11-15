@@ -5,12 +5,11 @@ Predicting loan defaults with Python, SQL, XGBoost and SHAP, with an interactive
 
 ```
 data/            raw, external, interim and processed data (not committed)
-sql/             star-schema DDL and EDA queries
+sql/             EDA queries
 src/credit_risk/ Python package: ingest, clean, validate, features, models, export
 notebooks/       numbered notebooks: data audit, EDA, model experiments
 models/          trained model file
 app/             Streamlit app (app/data/ holds small committed aggregates)
-powerbi/         Power BI report, DAX measures, screenshots
 reports/         figures, findings and model card
 docs/            data dictionary and cleaning log
 tests/           unit tests
