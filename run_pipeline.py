@@ -5,6 +5,7 @@
 """
 
 import argparse
+import logging
 import sys
 
 from credit_risk.data import clean, ingest, validate
@@ -28,6 +29,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--from", dest="start", choices=STEPS, default="ingest", help="step to start from")
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="    %(message)s")
 
     names = list(STEPS)
     for name in names[names.index(args.start):]:
