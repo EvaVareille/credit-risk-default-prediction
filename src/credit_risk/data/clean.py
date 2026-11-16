@@ -10,6 +10,7 @@ dropped or set aside is decided in docs/column_classification.csv, not in this f
   evaluation (the profit curve). They are never joined to the features.
 """
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -19,6 +20,8 @@ import pandas as pd
 
 from credit_risk.config import (
     COLUMN_CLASSIFICATION_CSV,
+    CAP_PERCENTILE,
+    CAP_TRIGGER_RATIO,
     DEFAULT_STATUSES,
     GOOD_STATUSES,
     LOANS_CLEAN_PARQUET,
@@ -29,6 +32,8 @@ from credit_risk.config import (
     TARGET,
     TEST_END,
     TRAIN_START,
+    VALIDATION_START,
+    WINSOR_CAPS_JSON,
 )
 from credit_risk.data.audit import LOANS_AUDIT_VIEW, create_audit_view, open_raw_loans
 from credit_risk.data.columns import columns_with_roles, read_classification
@@ -126,6 +131,48 @@ def clean_loans(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def fit_caps(
+    df: pd.DataFrame,
+    columns: list[str],
+    percentile: float = CAP_PERCENTILE,
+    trigger_ratio: float = CAP_TRIGGER_RATIO,
+) -> dict[str, float]:
+    """Find the upper cap of each column that has an extreme tail in `df`.
+
+    A column gets a cap (its `percentile`) only if its maximum is more than `trigger_ratio`
+    times that percentile. Columns whose percentile is 0 or below are skipped (no ratio).
+    Pass training loans only, so nothing about later loans shapes the caps.
+    """
+    caps = {}
+    for column in columns:
+        values = df[column].dropna()
+        if values.empty:
+            continue
+        cap = float(values.quantile(percentile))
+        if cap > 0 and values.max() > trigger_ratio * cap:
+            caps[column] = cap
+    return caps
+
+
+def apply_caps(df: pd.DataFrame, caps: dict[str, float]) -> pd.DataFrame:
+    """Clip each capped column at its upper cap. Missing values stay missing."""
+    out = df.copy()
+    for column, cap in caps.items():
+        out[column] = out[column].clip(upper=cap)
+    return out
+
+
+def save_caps(caps: dict[str, float], path: Path = WINSOR_CAPS_JSON) -> None:
+    """Write the fitted caps as JSON, so the app can clip a form's inputs the same way."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(caps, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_caps(path: Path = WINSOR_CAPS_JSON) -> dict[str, float]:
+    """Read caps written by `save_caps`."""
+    return {k: float(v) for k, v in json.loads(path.read_text(encoding="utf-8")).items()}
+
+
 def select_modelling_loans(con: duckdb.DuckDBPyConnection, columns: list[str]) -> pd.DataFrame:
     """Read `columns` (as raw text) for the loans the model is built on, ordered by id.
 
@@ -180,6 +227,20 @@ def run(
 
     loans = make_target(clean_loans(raw)).drop(columns=STATUS_COLUMN)
     features, outcomes = split_outcomes(loans, outcome_columns)
+
+    # Missing values are left as they are: months-since columns use missing for "never
+    # happened", trees take missing natively, and any imputation for the logistic regression
+    # is fitted on the training set inside the model pipeline (week 5).
+    numeric_features = [
+        c for c in features.select_dtypes("float64").columns if c not in (ID_COLUMN, TARGET)
+    ]
+    train = features[features["issue_d"] < pd.Timestamp(VALIDATION_START)]
+    caps = fit_caps(train, numeric_features)
+    n_capped = {c: int((features[c] > cap).sum()) for c, cap in caps.items()}
+    features = apply_caps(features, caps)
+    save_caps(caps)
+    logger.info("Capped %s columns at their training %.1fth percentile: %s",
+                len(caps), CAP_PERCENTILE * 100, n_capped)
 
     for path, table in ((clean_path, features), (outcomes_path, outcomes)):
         path.parent.mkdir(parents=True, exist_ok=True)

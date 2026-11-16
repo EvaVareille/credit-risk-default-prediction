@@ -41,6 +41,8 @@ DUCKDB_PATH = PROCESSED_DIR / "credit_risk.duckdb"
 LOANS_RAW_PARQUET = INTERIM_DIR / "loans_raw.parquet"  # raw CSV as Parquet, fast to reload
 LOANS_CLEAN_PARQUET = INTERIM_DIR / "loans_clean.parquet"
 LOANS_PROCESSED_PARQUET = PROCESSED_DIR / "loans_processed.parquet"  # model-ready table
+# Outlier caps fitted on the training loans. The app applies the same caps to form inputs.
+WINSOR_CAPS_JSON = INTERIM_DIR / "winsor_caps.json"
 # Post-issue columns kept for evaluation only (profit curve), never joined to the features.
 LOANS_OUTCOMES_PARQUET = PROCESSED_DIR / "loans_outcomes.parquet"
 MODEL_PATH = MODELS_DIR / "xgb_default_model.json"
@@ -68,6 +70,13 @@ TRAIN_START = date(2013, 1, 1)
 VALIDATION_START = date(2015, 1, 1)
 TEST_START = date(2015, 7, 1)
 TEST_END = date(2016, 1, 1)  # loans issued from here on are excluded: too many unresolved
+
+# ---- Outlier capping -------------------------------------------------------
+# A numeric feature is capped (winsorised) at its CAP_PERCENTILE if, in the training period,
+# its maximum is more than CAP_TRIGGER_RATIO times that percentile: a tail so extreme that
+# a few loans would dominate a scaled or linear model. Caps are fitted on training loans only.
+CAP_PERCENTILE = 0.999
+CAP_TRIGGER_RATIO = 3.0
 
 # ---- Column decisions ------------------------------------------------------
 # One row per raw column: decision, role, feature_set and in_app_model.

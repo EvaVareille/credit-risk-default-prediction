@@ -5,6 +5,10 @@ import pytest
 from credit_risk.config import TARGET
 from credit_risk.data import audit, clean
 from credit_risk.data.clean import (
+    apply_caps,
+    fit_caps,
+    load_caps,
+    save_caps,
     clean_loans,
     make_target,
     parse_emp_length,
@@ -154,3 +158,34 @@ def test_run_writes_a_features_table_and_a_separate_outcomes_table(raw_parquet, 
     assert list(outcomes.columns) == ["id", "total_pymnt"]
     assert outcomes["id"].tolist() == [1, 2, 3, 5]
     assert outcomes["total_pymnt"].tolist() == [1100.0, 500.0, 3300.0, 1200.0]
+
+
+def test_fit_caps_caps_only_extreme_tails():
+    df = pd.DataFrame({
+        "income": [*range(1, 1000), 1_000_000],  # one absurd value
+        "steady": [*range(1, 1001)],  # max is not 3x its 99.9th percentile
+    })
+    caps = fit_caps(df, ["income", "steady"], percentile=0.99, trigger_ratio=3.0)
+    assert list(caps) == ["income"]
+    assert caps["income"] < 1000
+
+
+def test_fit_caps_skips_zero_percentile_and_empty_columns():
+    df = pd.DataFrame({"mostly_zero": [0] * 99 + [50], "empty": [None] * 100})
+    assert fit_caps(df, ["mostly_zero", "empty"], percentile=0.9) == {}
+
+
+def test_apply_caps_clips_above_cap_and_keeps_missing():
+    df = pd.DataFrame({"a": [1.0, 500.0, None], "b": [9.0, 9.0, 9.0]})
+    out = apply_caps(df, {"a": 100.0})
+    assert out["a"].iloc[:2].tolist() == [1.0, 100.0]
+    assert out["a"].isna().iloc[2]
+    assert out["b"].tolist() == [9.0, 9.0, 9.0]
+    assert df["a"].iloc[1] == 500.0  # input not changed
+
+
+def test_caps_round_trip_through_json(tmp_path):
+    caps = {"annual_inc": 500_000.0, "revol_bal": 243_569.21}
+    path = tmp_path / "sub" / "caps.json"
+    save_caps(caps, path)
+    assert load_caps(path) == caps
