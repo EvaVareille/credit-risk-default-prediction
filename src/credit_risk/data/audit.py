@@ -1,6 +1,7 @@
 """Read-only profiling of the raw loans, used by notebooks/01_data_audit.ipynb.
 
 Everything here reads the Parquet cache written by ingest.py and changes nothing.
+The analysis queries live in sql/analysis/*.sql and are run with run_sql_file().
 The raw table is all text, so column types are inferred from the values.
 """
 
@@ -9,9 +10,21 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from credit_risk.config import DEFAULT_STATUSES, GOOD_STATUSES, LOANS_RAW_PARQUET
+from credit_risk.config import (
+    ANALYSIS_SQL_DIR,
+    DEFAULT_STATUSES,
+    GOOD_STATUSES,
+    LOANS_RAW_PARQUET,
+    MODEL_APPLICATION_TYPE,
+    MODEL_TERM_MONTHS,
+    TEST_END,
+    TEST_START,
+    TRAIN_START,
+    VALIDATION_START,
+)
 
 RAW_LOANS_VIEW = "raw_loans"
+LOANS_AUDIT_VIEW = "loans_audit"
 
 # The raw file has non-loan footer lines ("Total amount funded in policy code 1: ...").
 # A real loan has a numeric id; clean.py must apply the same rule.
@@ -82,41 +95,63 @@ def profile_columns(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _outcome(status: str | None) -> str:
-    if status in DEFAULT_STATUSES:
-        return "default"
-    if status in GOOD_STATUSES:
-        return "fully_paid"
-    return "unresolved"
+def _sql_list(values: frozenset[str]) -> str:
+    """Render a set of strings as a DuckDB list literal, e.g. ['Charged Off', 'Default']."""
+    return "[" + ", ".join("'" + v.replace("'", "''") + "'" for v in sorted(values)) + "]"
 
 
-def loan_status_counts(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    """Value counts of loan_status with the outcome each status maps to in the target."""
-    counts = con.execute(
+def create_audit_view(con: duckdb.DuckDBPyConnection) -> None:
+    """Create `loans_audit`: the raw loan rows plus typed helper columns for the SQL queries.
+
+    Adds issue_date, issue_year, issue_month, term_months, outcome ('default', 'fully_paid' or
+    'unresolved', using the status lists in config.py) and is_default (1, 0, or NULL while
+    unresolved). Every raw column is kept as text. Safe to call more than once.
+    """
+    con.execute(
         f"""
-        SELECT loan_status AS status, count(*) AS n_loans
-        FROM {RAW_LOANS_VIEW} WHERE {LOAN_ROWS}
-        GROUP BY loan_status ORDER BY n_loans DESC
+        CREATE OR REPLACE VIEW {LOANS_AUDIT_VIEW} AS
+        SELECT *,
+               year(issue_date) AS issue_year,
+               month(issue_date) AS issue_month,
+               CASE outcome WHEN 'default' THEN 1 WHEN 'fully_paid' THEN 0 END AS is_default
+        FROM (
+            SELECT *,
+                   try_strptime(issue_d, '%b-%Y')::DATE AS issue_date,
+                   try_cast(regexp_extract(term, '(\\d+)', 1) AS INTEGER) AS term_months,
+                   CASE
+                       WHEN list_contains({_sql_list(DEFAULT_STATUSES)}, loan_status) THEN 'default'
+                       WHEN list_contains({_sql_list(GOOD_STATUSES)}, loan_status) THEN 'fully_paid'
+                       ELSE 'unresolved'
+                   END AS outcome
+            FROM {RAW_LOANS_VIEW} WHERE {LOAN_ROWS}
+        )
         """
-    ).df()
-    counts["pct"] = (100 * counts["n_loans"] / counts["n_loans"].sum()).round(2)
-    counts["outcome"] = counts["status"].map(_outcome)
-    return counts
+    )
 
 
-def loans_per_issue_year(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
-    """Loans, resolved loans and default rate by issue year, to choose the out-of-time split."""
-    by_year = con.execute(
-        f"""
-        SELECT year(strptime(issue_d, '%b-%Y')) AS issue_year,
-               count(*) AS n_loans,
-               count(*) FILTER (WHERE list_contains(?, loan_status)) AS n_default,
-               count(*) FILTER (WHERE list_contains(?, loan_status)) AS n_fully_paid
-        FROM {RAW_LOANS_VIEW} WHERE {LOAN_ROWS}
-        GROUP BY issue_year ORDER BY issue_year
-        """,
-        [sorted(DEFAULT_STATUSES), sorted(GOOD_STATUSES)],
-    ).df()
-    by_year["n_resolved"] = by_year["n_default"] + by_year["n_fully_paid"]
-    by_year["default_rate"] = (by_year["n_default"] / by_year["n_resolved"]).round(4)
-    return by_year.drop(columns="n_fully_paid")
+# Values a query may reference as $name. Only the ones a query uses are passed to DuckDB,
+# which rejects parameters that do not appear in the SQL.
+_SQL_PARAMETERS = {
+    "model_term_months": MODEL_TERM_MONTHS,
+    "model_application_type": MODEL_APPLICATION_TYPE,
+    "train_start": TRAIN_START,
+    "validation_start": VALIDATION_START,
+    "test_start": TEST_START,
+    "test_end": TEST_END,
+}
+
+
+def run_sql_file(
+    con: duckdb.DuckDBPyConnection, name: str, sql_dir: Path = ANALYSIS_SQL_DIR
+) -> pd.DataFrame:
+    """Run sql/analysis/<name>.sql against the `loans_audit` view and return the result.
+
+    `name` is the file name without `.sql`, e.g. "04_resolved_share_by_term_and_year".
+    """
+    path = sql_dir / f"{name.removesuffix('.sql')}.sql"
+    if not path.is_file():
+        raise FileNotFoundError(f"No SQL file {path}")
+    create_audit_view(con)
+    sql = path.read_text(encoding="utf-8")
+    parameters = {k: v for k, v in _SQL_PARAMETERS.items() if f"${k}" in sql}
+    return con.execute(sql, parameters or None).df()

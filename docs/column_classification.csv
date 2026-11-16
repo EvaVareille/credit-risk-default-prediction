@@ -4,7 +4,7 @@ member_id,drop_sparse,Empty in every row.,none,,
 loan_amnt,keep,"Loan terms, known at application.",feature,core,yes
 funded_amnt,eval_only,"Set when the loan is funded, after application, and a near-duplicate of loan_amnt. Never a feature. Kept in the outcome table as the loan's exposure for the profit curve.",eval_only,,
 funded_amnt_inv,drop_redundant,"Investor-funded share of the loan, a near-duplicate of loan_amnt and not known at application.",none,,
-term,keep,"Modelling uses 36-month loans only, because most 60-month loans issued 2015 or later are still unresolved. Constant after the filter, so not a feature. Used for the profit calculation.",filter,,
+term,keep,"Modelling uses 36-month loans only, because 60-month loans are only partly resolved (83% for 2014, 67% for 2015, less after) and their default rate is biased. Constant after the filter, so not a feature. Used for the profit calculation.",filter,,
 int_rate,keep,"Lending Club's own risk assessment, so partly copies their model. Excluded from the headline model; added only in the ablation run to measure how much they lift AUC.",feature,lc_assessment,no
 installment,keep,"Loan terms. The monthly payment is calculated from loan_amnt, term and int_rate, so with a fixed term it reveals the interest rate. Excluded from the headline model; added only in the ablation run.",feature,lc_assessment,no
 grade,keep,"Lending Club's own risk assessment, so partly copies their model. Excluded from the headline model; added only in the ablation run to measure how much they lift AUC.",feature,lc_assessment,no
@@ -62,21 +62,21 @@ verification_status_joint,drop_sparse,"Joint applications only (about 5% of loan
 acc_now_delinq,keep,Credit history at application.,feature,core,no
 tot_coll_amt,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
 tot_cur_bal,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
-open_acc_6m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-open_act_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-open_il_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-open_il_24m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-mths_since_rcnt_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-total_bal_il,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-il_util,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-open_rv_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-open_rv_24m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-max_bal_bc,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-all_util,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+open_acc_6m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+open_act_il,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+open_il_12m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+open_il_24m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+mths_since_rcnt_il,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+total_bal_il,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+il_util,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+open_rv_12m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+open_rv_24m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+max_bal_bc,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+all_util,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
 total_rev_hi_lim,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
-inq_fi,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-total_cu_tl,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
-inq_last_12m,drop_sparse,"Only collected from late 2015, so empty for the training, validation and test periods.",none,,
+inq_fi,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+total_cu_tl,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
+inq_last_12m,drop_sparse,"Only collected from late 2015, so almost entirely empty for the training, validation and test periods.",none,,
 acc_open_past_24mths,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
 avg_cur_bal,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no
 bc_open_to_buy,keep,"Bureau snapshot at application. Empty for all loans issued 2007-2011 and half of 2012, so train from 2013 onward. Do not add missing-value flags (they would encode the issue year).",feature,core,no

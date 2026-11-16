@@ -2,6 +2,8 @@
 
 Every cleaning decision, why it was made, and how many rows/columns it affected.
 
+The evidence behind rows 4 to 10 is reproduced in `notebooks/01_data_audit.ipynb`, which runs the queries in `sql/analysis/`.
+
 | # | Date | Step | Decision | Reason | Rows / columns affected |
 |---|---|---|---|---|---|
 | 1 | | Column names | Lower-cased, snake_case | Consistency across Python and SQL | All columns |
@@ -9,8 +11,8 @@ Every cleaning decision, why it was made, and how many rows/columns it affected.
 | 3 | | `emp_length` | Mapped to years ('< 1 year' = 0, '10+ years' = 10) | Make it numeric | 1 column |
 | 4 | 2026-11-15 | Target | Kept only loans with a final outcome (Fully Paid, Charged Off, Default, and the "Does not meet the credit policy" versions of those) | Running loans have no known outcome | 2,260,668 loans → 1,348,099 resolved. Removed 878,317 Current and 34,252 Late / In Grace Period |
 | 5 | 2026-11-15 | Late and In Grace Period loans | Dropped as unresolved | No final outcome, but they are likely to default, so the default rate is biased slightly downward. Limitation for the model card | 34,252 loans |
-| 6 | 2026-11-15 | Footer rows | Dropped rows without a numeric `id` | The raw file ends with non-loan summary lines | Rows without a numeric `id` |
-| 7 | 2026-11-15 | Term | Modelling population is 36-month loans only | Most 60-month loans issued 2015 or later are unresolved, so their outcomes are biased towards early defaults. 36-month loans issued up to 2015 are fully matured. 60-month loans stay in EDA with a caveat | 1,348,099 → 1,023,206 resolved loans |
+| 6 | 2026-11-15 | Footer rows | Dropped rows without a numeric `id` | The raw file ends with non-loan summary lines | 33 rows (2,260,701 → 2,260,668) |
+| 7 | 2026-11-15 | Term | Modelling population is 36-month loans only | 60-month loans are only partly resolved (83% for 2014, 67% for 2015, less after), so their default rate is biased. 36-month loans issued up to 2015 are fully matured. 60-month loans stay in EDA with a caveat | 1,348,099 → 1,023,206 resolved loans |
 | 8 | 2026-11-15 | Application type | Modelling population is Individual loans only | Joint applications start in 2015 (120,710 loans in total) and `annual_inc` and `dti` mean something different on them. The column is then constant, so it is not a feature | 1,023,206 → 1,006,938 |
 | 9 | 2026-11-15 | Issue date | Modelling starts at loans issued from 2013 | Bureau-snapshot columns are 100% empty for 2007–2011 and about half empty for 2012. Missing-value flags are not added, because they would only encode the issue year | 75,004 resolved 36-month Individual loans issued 2007–2012 excluded; 931,934 remain |
 | 10 | 2026-11-15 | Out-of-time split | Train Jan 2013 – Dec 2014, validation Jan – Jun 2015, test Jul – Dec 2015 | Fully matured loans only, so default rates are comparable (13.2%, 15.1%, 14.7%). 2016 loans are only 72% resolved for 36-month loans and show a distorted 19.8% default rate | 262,992 train, 120,790 validation, 161,997 test |
@@ -22,3 +24,5 @@ Every cleaning decision, why it was made, and how many rows/columns it affected.
 | 16 | 2026-11-15 | `zip_code`, `emp_title`, `title` | Dropped | Zip is high cardinality and a possible proxy for protected characteristics (fairness check uses state only). The two text fields are free text | 3 columns |
 | 17 | 2026-11-15 | Months-since-event columns | Keep, with missing meaning "never happened" | Missingness is informative. Three of them (`mths_since_last_major_derog`, `mths_since_recent_bc_dlq`, `mths_since_recent_revol_delinq`) do not exist before 2012, which the 2013 start covers | TODO |
 | 18 | 2026-11-15 | App model | Compact model of 12 features (`in_app_model = yes`) for the "Score an applicant" page; the full model gives the reported metrics | A form cannot ask for about 65 bureau-snapshot fields | 12 columns |
+| 19 | 2026-11-15 | Types | `clean.py` converts numeric columns to float64 and `id` to int64, reads `issue_d` and `earliest_cr_line` from text like 'Dec-2015' to the first day of the month, turns `emp_length` into years, and trims text columns. It raises an error if any value would be lost in a conversion | A silent conversion failure would turn real values into missing ones. None was lost on the full file | 60 numeric, 6 text, 2 date columns and `id` |
+| 20 | 2026-11-15 | Output tables | `clean.py` writes `data/interim/loans_clean.parquet` (`id`, `issue_d`, the target `is_default` and the 67 feature columns, both feature sets) and `data/processed/loans_outcomes.parquet` (`id` plus the 7 evaluation columns). `loan_status`, `term` and `application_type` are not kept, since the target replaces the status and the other two are constant after filtering. Rows are sorted by `id`, and a rerun gives identical files | Keeps evaluation-only columns out of the feature table by construction | 545,779 rows; 70 and 8 columns |

@@ -7,19 +7,18 @@ Dropped columns are left out: docs/column_classification.csv already explains th
 Regenerate after changing the classification:  python -m credit_risk.data.dictionary
 """
 
-import csv
 import re
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 from credit_risk.config import (
-    COLUMN_CLASSIFICATION_CSV,
     DATA_DICTIONARY_MD,
     FEATURE_SET_CORE,
     FEATURE_SET_LC_ASSESSMENT,
     LC_DATA_DICTIONARY,
 )
+from credit_risk.data.columns import read_classification
 
 _XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _FIRST_SHEET = "xl/worksheets/sheet1.xml"  # the column list; later sheets are other tables
@@ -113,6 +112,10 @@ _DERIVED_ROWS = (
         "| `state_unemployment_rate` | float | Seasonally adjusted unemployment rate (%) for "
         "`addr_state` in the month before `issue_d` | FRED | Core |"
     ),
+    (
+        "| `instalment_to_monthly_income` | float | `installment` divided by monthly income "
+        "(`annual_inc` / 12) | Derived | Ablation only; reveals the interest rate |"
+    ),
 )
 
 _NOT_COLLECTED_BEFORE_2012 = frozenset(
@@ -154,12 +157,6 @@ def clean_description(text: str) -> str:
     text = text.replace("��", "").replace("�s", "'s").replace("�", " ")
     text = re.sub(r"\s+", " ", text).strip().rstrip("*").strip()
     return re.sub(r"\s+([,.;:])", r"\1", text)
-
-
-def read_classification(path: Path = COLUMN_CLASSIFICATION_CSV) -> list[dict[str, str]]:
-    """Read docs/column_classification.csv as a list of row dicts."""
-    with open(path, encoding="utf-8", newline="") as f:
-        return list(csv.DictReader(f))
 
 
 def column_type(column: str, inferred_type: str) -> str:

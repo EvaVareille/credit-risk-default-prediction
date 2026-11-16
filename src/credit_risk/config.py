@@ -17,6 +17,7 @@ INTERIM_DIR = DATA_DIR / "interim"
 PROCESSED_DIR = DATA_DIR / "processed"
 
 SQL_DIR = PROJECT_ROOT / "sql"
+ANALYSIS_SQL_DIR = SQL_DIR / "analysis"
 MODELS_DIR = PROJECT_ROOT / "models"
 APP_DATA_DIR = PROJECT_ROOT / "app" / "data"
 REPORTS_DIR = PROJECT_ROOT / "reports"
@@ -50,7 +51,8 @@ RANDOM_SEED = 42
 
 # ---- Modelling population --------------------------------------------------
 # Only 36-month, Individual loans with a final outcome, issued from 2013.
-# - 60-month loans issued 2015 or later are mostly unresolved, which biases their default rate.
+# - 60-month loans are only partly resolved (83% for 2014, 67% for 2015, less after), which
+#   biases their default rate.
 # - Joint applications start in 2015, and annual_inc / dti mean something else on them.
 # - Bureau-snapshot columns are empty for 2007-2011 and half empty for 2012.
 # The excluded loans stay available for EDA. See docs/cleaning_log.md.

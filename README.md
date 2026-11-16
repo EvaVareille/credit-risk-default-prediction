@@ -23,26 +23,28 @@ The raw data is too large for GitHub and is not committed. Download it into `dat
 Known data issues, each recorded in `docs/cleaning_log.md`:
 
 - Loans with status "Current" have no outcome yet and are removed from modelling.
-- Many columns are only known after the loan is issued (for example `total_pymnt`, `recoveries`). They are dropped to prevent leakage.
+- Recent loans are only partly resolved, and the ones that have finished skew towards early defaults. For example, 36-month loans issued in 2016 are 72% resolved and show a 19.8% default rate against 14.9% for 2015. Modelling therefore uses 36-month loans issued up to 2015, which are fully matured.
+- Bureau-snapshot columns (for example `tot_cur_bal`, `mort_acc`) are empty for 2007 to 2011 and half empty for 2012, so modelling starts at 2013. Joint applications only start in 2015, so modelling uses Individual loans only.
+- Many columns are only known after the loan is issued (for example `total_pymnt`, `recoveries`). They are never used as features. A few are kept in a separate outcome table to compute realised profit for the profit curve.
 - Many columns are mostly empty.
 - The raw table is all text, so numbers such as `int_rate` and `revol_util` need casting (no `%` signs in this file), and `emp_length` is text.
 - `annual_inc` and `dti` contain extreme outliers.
 - Lending Club's criteria changed over time, so older and newer loans behave differently.
-- Defaults are the minority class, roughly 1 in 5 resolved loans (to be confirmed in the data audit).
+- Defaults are the minority class: about 20% of resolved loans (269,360 of 1,348,099).
 
 ## Planned approach
 
-1. **Ingest and audit.** Load the raw CSV into DuckDB, save as Parquet, and classify every column as keep, drop (leakage), drop (too sparse) or drop (irrelevant).
-2. **Clean and build features.** Keep resolved loans only. Target is 1 for Charged Off or Default and 0 for Fully Paid. Fix types, handle missing values and outliers, add ratio and credit-history features, and join FRED unemployment. Validate the output and cover the cleaning code with unit tests.
+1. **Ingest and audit.** Load the raw CSV into DuckDB, save as Parquet, and classify every column in `docs/column_classification.csv`: keep, drop (leakage, too sparse, irrelevant or redundant), or evaluation only.
+2. **Clean and build features.** Keep resolved, 36-month, Individual loans issued from 2013 (60-month loans and loans from 2016 are only partly resolved, which biases their default rate). Target is 1 for Charged Off or Default and 0 for Fully Paid. Fix types, handle missing values and outliers, add ratio and credit-history features, and join FRED unemployment for the month before issue. Keep the post-issue columns needed for the profit curve in a separate outcome table. Validate the output and cover the cleaning code with unit tests.
 3. **Explore.** Default rate by grade, term, purpose, state and issue year, written up as findings with a "so what" for a lender.
-4. **Model.** Logistic regression baseline against XGBoost or LightGBM. Features are limited to information the lender would know on the application date. Models are trained with and without Lending Club's own `grade`, `sub_grade` and `int_rate` to measure how much they contribute.
-5. **Validate out of time.** Train on the earliest years, tune on the next year, and score once on a later year, as banks do. A random split would overstate performance.
+4. **Model.** Logistic regression baseline against XGBoost or LightGBM. Features are limited to information the lender would know on the application date. The headline models exclude Lending Club's own `grade`, `sub_grade` and `int_rate`, and also `installment`, which reveals the rate. An ablation adds them back to measure how much they contribute. A compact 12-feature model powers the app's scoring form.
+5. **Validate out of time.** Train on loans issued 2013 to 2014, tune on the first half of 2015, and score once on the second half of 2015, as banks do. These are the latest fully matured 36-month loans. A random split would overstate performance.
 6. **Evaluate.** ROC-AUC, Gini, KS, precision and recall at a cut-off, and calibration. Class imbalance is handled with class weights, not oversampling.
-7. **Explain.** SHAP global importance, dependence plots and per-applicant explanations. Check whether state acts as a proxy for a protected characteristic.
-8. **Decide.** Plot expected profit at each approval cut-off and recommend one, with the assumptions stated.
+7. **Explain.** SHAP global importance, dependence plots and per-applicant explanations. Check whether state acts as a proxy for a protected characteristic, and note that employment length and credit history length may proxy for age.
+8. **Decide.** Plot profit at each approval cut-off, using the realised repayments of the test loans, and recommend one, with the assumptions stated.
 9. **Deliver.** A Streamlit app with overview, explore and "score an applicant" pages, plus a model card and data dictionary.
 
-Success criteria: the pipeline reruns from raw data with one command, the main model beats the baseline on the out-of-time test set with AUC of 0.70 or above, tests pass, and the app is publicly reachable.
+Success criteria: the pipeline reruns from raw data with one command, the headline model beats the baseline on the out-of-time test set (provisional target AUC of 0.68 or above without Lending Club's own grade and rate, 0.70 or above with them), tests pass, and the app is publicly reachable.
 
 ## Project structure
 
@@ -54,7 +56,7 @@ notebooks/       numbered notebooks: data audit, EDA, model experiments
 models/          trained model file
 app/             Streamlit app (app/data/ holds small committed aggregates)
 reports/         figures, findings and model card
-docs/            data dictionary and cleaning log
+docs/            project plan, column classification, data dictionary and cleaning log
 tests/           unit tests
 ```
 

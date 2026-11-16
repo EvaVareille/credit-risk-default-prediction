@@ -127,6 +127,7 @@ Names are provisional until `build_features.py` exists.
 | `fico_mid` | float | Midpoint of `fico_range_low` and `fico_range_high` | Derived | Core; app |
 | `issue_month` | int | Calendar month of `issue_d` (1-12). The year is deliberately not used | Derived | Core |
 | `state_unemployment_rate` | float | Seasonally adjusted unemployment rate (%) for `addr_state` in the month before `issue_d` | FRED | Core |
+| `instalment_to_monthly_income` | float | `installment` divided by monthly income (`annual_inc` / 12) | Derived | Ablation only; reveals the interest rate |
 
 ## Outcome table (evaluation only)
 

@@ -2,7 +2,7 @@
 
 Raw files in data/raw/ are never modified: this module only reads them. Every
 column is loaded as text and no rows are dropped, so the raw table mirrors the
-file exactly (including its two non-loan footer lines). Typing and row removal
+file exactly (including its non-loan footer lines). Typing and row removal
 happen in clean.py and are recorded in docs/cleaning_log.md.
 """
 
