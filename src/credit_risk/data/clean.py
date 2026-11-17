@@ -212,6 +212,7 @@ def run(
     clean_path: Path = LOANS_CLEAN_PARQUET,
     outcomes_path: Path = LOANS_OUTCOMES_PARQUET,
     classification_path: Path = COLUMN_CLASSIFICATION_CSV,
+    caps_path: Path = WINSOR_CAPS_JSON,
 ) -> None:
     """Pipeline entry point: raw loans -> clean features table and outcomes table."""
     rows = read_classification(classification_path)
@@ -238,7 +239,7 @@ def run(
     caps = fit_caps(train, numeric_features)
     n_capped = {c: int((features[c] > cap).sum()) for c, cap in caps.items()}
     features = apply_caps(features, caps)
-    save_caps(caps)
+    save_caps(caps, caps_path)
     logger.info("Capped %s columns at their training %.1fth percentile: %s",
                 len(caps), CAP_PERCENTILE * 100, n_capped)
 

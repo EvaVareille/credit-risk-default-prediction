@@ -165,9 +165,9 @@ Don't start a phase until the gate before it is passed: a broken pipeline or lea
 
 - [x] Create the GitHub repo (README, Python `.gitignore`, MIT licence) and clone it in VS Code
 - [x] Create the folder structure, virtual environment and `pyproject.toml`; run `pip install -e .`
-- [ ] Download the Lending Club data and data dictionary; download FRED unemployment CSVs
-- [ ] Write the README skeleton: business question, data sources, planned approach
-- [ ] Write `config.py` with file paths and a fixed random seed
+- [x] Download the Lending Club data and data dictionary; download FRED unemployment CSVs
+- [x] Write the README skeleton: business question, data sources, planned approach
+- [x] Write `config.py` with file paths and a fixed random seed
 
 **Deliverable:** repo with structure, README v0.1. **Done when:** a fresh clone installs without errors.
 
@@ -175,11 +175,11 @@ Don't start a phase until the gate before it is passed: a broken pipeline or lea
 
 **Goal:** understand exactly what is in the data before changing anything.
 
-- [ ] `ingest.py`: load the raw CSV into DuckDB and save as Parquet (much faster to reload)
-- [ ] `01_data_audit.ipynb`: row counts, column types, % missing per column, value counts of `loan_status`
-- [ ] SQL queries in `sql/analysis/`: loans per year, status breakdown, default rate by grade
-- [ ] Classify every column as *keep*, *drop: leakage*, *drop: too sparse* or *drop: irrelevant*
-- [ ] Start `data_dictionary.md` and `cleaning_log.md`
+- [x] `ingest.py`: load the raw CSV into DuckDB and save as Parquet (much faster to reload)
+- [x] `01_data_audit.ipynb`: row counts, column types, % missing per column, value counts of `loan_status`
+- [x] SQL queries in `sql/analysis/`: loans per year, status breakdown, default rate by grade
+- [x] Classify every column as *keep*, *drop: leakage*, *drop: too sparse* or *drop: irrelevant*
+- [x] Start `data_dictionary.md` and `cleaning_log.md`
 
 **Deliverable:** audit notebook and column classification. **Done when:** you can state the row count, date range, default rate and top 5 data problems.
 
@@ -187,15 +187,15 @@ Don't start a phase until the gate before it is passed: a broken pipeline or lea
 
 **Goal:** a reproducible script that turns raw data into a model-ready table.
 
-- [ ] `clean.py`: keep resolved loans only, create binary target (`1` = Charged Off/Default, `0` = Fully Paid)
-- [ ] `clean.py`: restrict the modelling population to 36-month, Individual loans issued from 2013 (2007–2012 and 60-month loans stay available for EDA only); drop footer rows without a numeric `id`
-- [ ] Apply `docs/column_classification.csv`: drop leakage, sparse, irrelevant and redundant columns; write the `eval_only` columns to a separate outcome table that is never joined to the feature matrix; fix types (cast numbers from text, `emp_length`, dates)
-- [ ] Handle missing values and cap outliers (e.g. `annual_inc`, `dti`) — log each choice and why
-- [ ] `build_features.py`: credit history length, loan-to-income, FICO midpoint, issue month (not issue year: trees cannot extrapolate to years they have not seen). Skip instalment-to-income in the headline model, because `installment` is calculated from the interest rate
-- [ ] Join FRED state unemployment by `addr_state` and the month before `issue_d` (the current month is not published at application time)
-- [ ] `validate.py`: checks for nulls in key fields, value ranges, duplicate IDs
-- [ ] Write the first unit tests for cleaning functions
-- [ ] `run_pipeline.py`: one command from raw to processed
+- [x] `clean.py`: keep resolved loans only, create binary target (`1` = Charged Off/Default, `0` = Fully Paid)
+- [x] `clean.py`: restrict the modelling population to 36-month, Individual loans issued from 2013 (2007–2012 and 60-month loans stay available for EDA only); drop footer rows without a numeric `id`
+- [x] Apply `docs/column_classification.csv`: drop leakage, sparse, irrelevant and redundant columns; write the `eval_only` columns to a separate outcome table that is never joined to the feature matrix; fix types (cast numbers from text, `emp_length`, dates)
+- [x] Handle missing values and cap outliers (e.g. `annual_inc`, `dti`) — log each choice and why
+- [x] `build_features.py`: credit history length, loan-to-income, FICO midpoint, issue month (not issue year: trees cannot extrapolate to years they have not seen). Skip instalment-to-income in the headline model, because `installment` is calculated from the interest rate
+- [x] Join FRED state unemployment by `addr_state` and the month before `issue_d` (the current month is not published at application time)
+- [x] `validate.py`: checks for nulls in key fields, value ranges, duplicate IDs
+- [x] Write the first unit tests for cleaning functions
+- [x] `run_pipeline.py`: one command from raw to processed
 
 **Deliverable:** processed Parquet table, passing tests. **Done when:** deleting `data/processed/` and rerunning recreates it identically.
 
@@ -203,12 +203,12 @@ Don't start a phase until the gate before it is passed: a broken pipeline or lea
 
 **Goal:** find the story in the data and write it in plain English.
 
-- [ ] `02_eda.ipynb`: default rate by grade, term, purpose, home ownership, employment length, state
-- [ ] Default rate by issue year (vintage analysis) and against unemployment
-- [ ] Distributions of income, DTI, interest rate, FICO for defaulters vs non-defaulters
-- [ ] Correlation check between numeric features
-- [ ] Write 5–8 headline findings in `reports/findings.md` (e.g. "60-month loans default X times more than 36-month loans")
-- [ ] Save the best charts to `reports/figures/` for the README
+- [x] `02_eda.ipynb`: default rate by grade, term, purpose, home ownership, employment length, state
+- [x] Default rate by issue year (vintage analysis) and against unemployment
+- [x] Distributions of income, DTI, interest rate, FICO for defaulters vs non-defaulters
+- [x] Correlation check between numeric features
+- [x] Write 5–8 headline findings in `reports/findings.md` (e.g. "60-month loans default X times more than 36-month loans")
+- [x] Save the best charts to `reports/figures/` for the README
 
 **Deliverable:** EDA notebook and findings document. **Done when:** each finding has a number and a "so what" for a lender.
 
@@ -218,6 +218,7 @@ Don't start a phase until the gate before it is passed: a broken pipeline or lea
 
 - [ ] Time-based split: train on older loans, validate and test on the newest (see Modelling approach)
 - [ ] Preprocessing pipeline: encoding categoricals, scaling for logistic regression
+- [ ] Logistic regression baseline only: apply `log1p` to the strongly skewed money columns (e.g. `annual_inc`, `revol_bal`, `tot_cur_bal`, `total_rev_hi_lim`) and band or cap the event counts that are mostly zero (e.g. `delinq_2yrs`, `pub_rec`, `tax_liens`), choosing columns from the skewness table in `02_eda.ipynb` section 9. Fit every transform and imputation on the training set only, drop one of each near-duplicate pair, and log each choice in `cleaning_log.md`. Tree models need none of this
 - [ ] Baseline: logistic regression
 - [ ] Main model: XGBoost or LightGBM with early stopping
 - [ ] Ablation: rerun both models with `grade`, `sub_grade`, `int_rate` and `installment` added (`feature_set = lc_assessment` in the column classification) and record the AUC lift

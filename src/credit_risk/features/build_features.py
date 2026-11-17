@@ -9,11 +9,13 @@ trees cannot extrapolate to years they have not seen.
 """
 
 import logging
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from credit_risk.config import (
+    FRED_STATE_UNEMPLOYMENT_CSV,
     LOANS_CLEAN_PARQUET,
     LOANS_PROCESSED_PARQUET,
     TEST_END,
@@ -27,7 +29,10 @@ SPLIT_COLUMN = "split"
 TRAIN, VALIDATION, TEST = "train", "validation", "test"
 
 # Derived columns by feature set. The headline model uses `core`; the ablation adds `lc_assessment`.
-DERIVED_CORE_FEATURES = ["loan_to_income", "credit_history_years", "fico_mid", "issue_month"]
+UNEMPLOYMENT_COLUMN = "state_unemployment_rate"
+DERIVED_CORE_FEATURES = [
+    "loan_to_income", "credit_history_years", "fico_mid", "issue_month", UNEMPLOYMENT_COLUMN,
+]
 DERIVED_LC_ASSESSMENT_FEATURES = ["instalment_to_monthly_income"]
 # Raw columns that a derived feature replaces. They leave the model table.
 REPLACED_COLUMNS = ["earliest_cr_line"]
@@ -75,6 +80,35 @@ def add_lc_assessment_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def read_state_unemployment(path: Path = FRED_STATE_UNEMPLOYMENT_CSV) -> pd.DataFrame:
+    """Read the FRED state file (one `XXUR` column per state) as long rows: state, month, rate.
+
+    `month` is the first day of the month the rate describes, so it lines up with `issue_d`.
+    """
+    wide = pd.read_csv(path, parse_dates=["observation_date"])
+    long = wide.melt(id_vars="observation_date", var_name="series", value_name=UNEMPLOYMENT_COLUMN)
+    long["addr_state"] = long["series"].str.removesuffix("UR")
+    long = long.rename(columns={"observation_date": "month"})
+    return long[["addr_state", "month", UNEMPLOYMENT_COLUMN]].dropna()
+
+
+def add_state_unemployment(df: pd.DataFrame, unemployment: pd.DataFrame) -> pd.DataFrame:
+    """Add the state unemployment rate for the month BEFORE the loan was issued.
+
+    The current month's rate is not published at application time, so it would leak the future.
+    Loans with no matching state and month get NaN. Row order and count are unchanged, and an
+    error is raised if the join would duplicate loans.
+    """
+    previous_month = (df["issue_d"] - pd.offsets.MonthBegin(1)).rename("month")
+    keys = pd.concat([df["addr_state"], previous_month], axis=1)
+    merged = keys.merge(unemployment, on=["addr_state", "month"], how="left")
+    if len(merged) != len(df):
+        raise ValueError("The unemployment table has duplicate state and month rows")
+    out = df.copy()
+    out[UNEMPLOYMENT_COLUMN] = merged[UNEMPLOYMENT_COLUMN].to_numpy()
+    return out
+
+
 def assign_split(df: pd.DataFrame) -> pd.DataFrame:
     """Add the out-of-time split from the issue date, using the dates in config.py.
 
@@ -94,9 +128,10 @@ def assign_split(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_features(df: pd.DataFrame, unemployment: pd.DataFrame) -> pd.DataFrame:
     """Cleaned loans -> model-ready table: derived features, split label, replaced columns dropped."""
     out = add_ratio_features(df)
+    out = add_state_unemployment(out, unemployment)
     out = add_credit_history_years(out)
     out = add_fico_mid(out)
     out = add_issue_month(out)
@@ -108,9 +143,12 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 def run() -> None:
     """Pipeline entry point: interim -> processed model table."""
     loans = pd.read_parquet(LOANS_CLEAN_PARQUET)
-    table = build_features(loans)
+    table = build_features(loans, read_state_unemployment())
     LOANS_PROCESSED_PARQUET.parent.mkdir(parents=True, exist_ok=True)
     table.to_parquet(LOANS_PROCESSED_PARQUET, index=False)
+    missing = int(table[UNEMPLOYMENT_COLUMN].isna().sum())
+    if missing:
+        logger.warning("%s loans have no state unemployment rate", f"{missing:,}")
     counts = table[SPLIT_COLUMN].value_counts().to_dict()
     logger.info("Wrote %s (%s rows, %s columns); splits %s",
                 LOANS_PROCESSED_PARQUET, f"{len(table):,}", table.shape[1], counts)

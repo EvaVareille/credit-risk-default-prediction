@@ -147,7 +147,9 @@ def test_run_writes_a_features_table_and_a_separate_outcomes_table(raw_parquet, 
     classification.write_text(CLASSIFICATION_CSV, encoding="utf-8")
     clean_path, outcomes_path = tmp_path / "out" / "clean.parquet", tmp_path / "out" / "outcomes.parquet"
 
-    clean.run(raw_parquet, clean_path, outcomes_path, classification)
+    caps_path = tmp_path / "out" / "caps.json"
+    clean.run(raw_parquet, clean_path, outcomes_path, classification, caps_path)
+    assert caps_path.is_file()
 
     features = pd.read_parquet(clean_path)
     outcomes = pd.read_parquet(outcomes_path)

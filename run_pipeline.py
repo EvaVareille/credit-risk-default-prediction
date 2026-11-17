@@ -16,8 +16,8 @@ from credit_risk.models import evaluate, explain, train
 STEPS = {
     "ingest": ingest.run,
     "clean": clean.run,
-    "validate": validate.run,
     "features": build_features.run,
+    "validate": validate.run,
     "train": train.run,
     "evaluate": evaluate.run,
     "explain": explain.run,
@@ -38,6 +38,9 @@ def main() -> int:
             STEPS[name]()
         except NotImplementedError as exc:
             print(f"    stopped: {exc}")
+            return 1
+        except AssertionError as exc:
+            print(f"    {exc}")
             return 1
     print("Pipeline complete.")
     return 0
